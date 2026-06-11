@@ -12,7 +12,7 @@ local UserInputService = game:GetService("UserInputService")
 local redzlib = loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Library/refs/heads/main/redz-V5-remake/main.luau"))()
 local Window = redzlib:MakeWindow({
     Title = "Sigma Hub : Blox Fruit",
-    SubTitle = "by @real_kuri and @duybeo | Sigma Edition",
+    SubTitle = "made by josiah",
     SaveFolder = "sigmahub.json"
 })
 
@@ -237,6 +237,27 @@ FarmLevel = Tabs.Main:AddToggle({
     Name = "Auto Farm Level",
     Default = false,
     Callback = function(Value) _G.Level = Value if not Value then alreadyTeleported = false; teleporting = false end end
+})
+
+KaitunToggle = Tabs.Main:AddToggle({
+    Name = "Kaitun Mode (Auto Everything)",
+    Description = "One toggle to rule them all",
+    Default = false,
+    Callback = function(Value)
+        _G.KaitunMode = Value
+        if Value then
+            _G.Level = true
+            _G.AutoStats = true
+            _G.AutoFarmNear = true
+            _G.AutoFarmChest = true
+            alreadyTeleported = false
+            teleporting = false
+        else
+            _G.AutoStats = false
+            _G.AutoFarmNear = false
+            _G.AutoFarmChest = false
+        end
+    end
 })
 
 local alreadyTeleported = false

@@ -29,6 +29,7 @@ local Modules = {
     "modules/11k-travel",
     "modules/11l-shop",
     "modules/11m-misc",
+    "modules/11n-kaitun",
 }
 
 for _, modPath in ipairs(Modules) do

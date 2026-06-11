@@ -31,6 +31,7 @@ local Modules = {
     "modules/11k-travel.lua",
     "modules/11l-shop.lua",
     "modules/11m-misc.lua",
+    "modules/11n-kaitun.lua",
 }
 
 local scriptDir = (... or ".") .. "/"

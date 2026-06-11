@@ -231,15 +231,6 @@ FarmLevel = Tabs.Main:AddToggle({
     Callback = function(Value) _G.Level = Value if not Value then alreadyTeleported = false; teleporting = false end end
 })
 
-KaitunToggle = Tabs.Main:AddToggle({
-    Name = "Kaitun Mode (Auto Everything)",
-    Description = "Intelligent auto-progression from level 1 to 2550",
-    Default = false,
-    Callback = function(Value)
-        _G.KaitunMode = Value
-    end
-})
-
 local alreadyTeleported = false
 local teleporting = false
 

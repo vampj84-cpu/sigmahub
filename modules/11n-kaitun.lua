@@ -1,10 +1,30 @@
 -- ============================================
--- MODULE 11n: Kaitun Mode — Dynamic Auto Progression
--- Uses the game's own quest data dynamically so it
--- never needs hardcoded level ranges.
+-- MODULE 11n: Kaitun Standalone
+-- Self-contained auto-progression with GUI.
+-- Loaded via: build-kaitun.lua (concatenated
+-- with modules 01-09 for full dependency).
 -- ============================================
 
--- NameCall hook for auto-aim in Kaitun mode
+-- Initialize MousePos for NameCall hook
+MousePos = Vector3.new(0, 0, 0)
+spawn(function()
+    while task.wait() do
+        pcall(function()
+            MousePos = game.Players.LocalPlayer:GetMouse().Hit.Position
+        end)
+    end
+end)
+
+-- Destroy Sigma Hub UI if present
+pcall(function()
+    for _, v in pairs(plr.PlayerGui:GetChildren()) do
+        if v:IsA("ScreenGui") and v.Name ~= "Main" and v.Name ~= "NotificationHolder" then
+            v:Destroy()
+        end
+    end
+end)
+
+-- NameCall hook for auto-aim
 pcall(function()
     local gg = getrawmetatable(game)
     local old = gg.__namecall
@@ -15,10 +35,8 @@ pcall(function()
         if tostring(method) == "FireServer" then
             if tostring(args[1]) == "RemoteEvent" then
                 if tostring(args[2]) ~= "true" and tostring(args[2]) ~= "false" then
-                    if _G.KaitunMode then
-                        args[2] = MousePos
-                        return old(unpack(args))
-                    end
+                    args[2] = MousePos
+                    return old(unpack(args))
                 end
             end
         end
@@ -37,19 +55,15 @@ local function BlockAnimations()
             track:Stop()
         end
         humanoid.AnimationPlayed:Connect(function(track)
-            if _G.KaitunMode then
-                task.spawn(function() track:Stop() end)
-            end
+            task.spawn(function() track:Stop() end)
         end)
     end)
 end
-
 plr.CharacterAdded:Connect(BlockAnimations)
 BlockAnimations()
 
--- Fighting style mastery progression
+-- Fighting style progression
 local function KaitunFightingStyle()
-    if not _G.KaitunMode then return end
     pcall(function()
         local remote = replicated.Remotes.CommF_
         local lvl = plr.Data.Level.Value
@@ -65,8 +79,8 @@ local function KaitunFightingStyle()
         end
 
         -- Equip best available fighting style
-        local styles = {"God Human", "Sanguine Art", "Superhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate", "Death Step", "Dragon Claw", "Fishman Karate", "Electro", "Black Leg", "Combat"}
-        for _, s in ipairs(styles) do
+        local prio = {"God Human", "Sanguine Art", "Superhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate", "Death Step", "Dragon Claw", "Fishman Karate", "Electro", "Black Leg", "Combat"}
+        for _, s in ipairs(prio) do
             if plr.Backpack:FindFirstChild(s) then
                 _G.SelectWeapon = s
                 _G.ChooseWP = "Melee"
@@ -74,59 +88,36 @@ local function KaitunFightingStyle()
             end
         end
 
-        -- Buy Black Leg if missing (starter)
         if not GetBP("Black Leg") and not GetBP("Electro") and not GetBP("Fishman Karate") and not GetBP("Dragon Claw") and not GetBP("Superhuman") then
-            if lvl >= 1 then
-                remote:InvokeServer("BuyBlackLeg")
-            end
+            if lvl >= 1 then remote:InvokeServer("BuyBlackLeg") end
             return
         end
-
-        -- Electro: need Black Leg level 300
         if GetBP("Black Leg") and not GetBP("Electro") and GetStyleLevel("Black Leg") >= 300 then
-            remote:InvokeServer("BuyElectro")
-            return
+            remote:InvokeServer("BuyElectro"); return
         end
-
-        -- Fishman Karate: need Electro level 300
         if GetBP("Electro") and not GetBP("Fishman Karate") and GetStyleLevel("Electro") >= 300 then
-            remote:InvokeServer("BuyFishmanKarate")
-            return
+            remote:InvokeServer("BuyFishmanKarate"); return
         end
-
-        -- Dragon Claw: need Fishman Karate level 300
         if GetBP("Fishman Karate") and not GetBP("Dragon Claw") and GetStyleLevel("Fishman Karate") >= 300 and lvl >= 850 then
-            remote:InvokeServer("BlackbeardReward", "DragonClaw", "2")
-            return
+            remote:InvokeServer("BlackbeardReward", "DragonClaw", "2"); return
         end
-
-        -- Superhuman: need Dragon Claw level 400
         if GetBP("Dragon Claw") and not GetBP("Superhuman") and GetStyleLevel("Dragon Claw") >= 400 and lvl >= 1100 then
-            remote:InvokeServer("BuySuperhuman")
-            return
+            remote:InvokeServer("BuySuperhuman"); return
         end
-
-        -- Godhuman: need Superhuman level 400
         if GetBP("Superhuman") and not GetBP("God Human") and GetStyleLevel("Superhuman") >= 400 and lvl >= 1500 then
-            remote:InvokeServer("BuyGodhuman")
-            return
+            remote:InvokeServer("BuyGodhuman"); return
         end
-
-        -- Sanguine Art: need Godhuman level 400
         if GetBP("God Human") and not GetBP("Sanguine Art") and GetStyleLevel("God Human") >= 400 and lvl >= 2000 then
-            remote:InvokeServer("BuySanguineArt")
-            return
+            remote:InvokeServer("BuySanguineArt"); return
         end
     end)
 end
 
--- Auto stat distribution: Melee until 2800 (stat cap), then Defense
+-- Auto stats: Melee → 2800 then Defense
 local function KaitunAutoStats()
-    if not _G.KaitunMode then return end
     pcall(function()
         if plr.Data.Points.Value > 0 then
-            local melee = plr.Data.Combat.Value
-            if melee < 2800 then
+            if plr.Data.Combat.Value < 2800 then
                 replicated.Remotes.CommF_:InvokeServer("AddPoint", "Melee", plr.Data.Points.Value)
             else
                 replicated.Remotes.CommF_:InvokeServer("AddPoint", "Defense", plr.Data.Points.Value)
@@ -135,36 +126,8 @@ local function KaitunAutoStats()
     end)
 end
 
--- Find NPC position for quest giver by name
-local function FindQuestNPC(npcName)
-    for _, npc in pairs(workspace.NPCs:GetChildren()) do
-        if npc.Name == npcName and npc:FindFirstChild("HumanoidRootPart") then
-            return npc.HumanoidRootPart.CFrame
-        end
-    end
-    for _, npc in pairs(replicated.NPCs:GetChildren()) do
-        if npc.Name == npcName and npc:FindFirstChild("HumanoidRootPart") then
-            return npc.HumanoidRootPart.CFrame
-        end
-    end
-    return nil
-end
-
--- Find and teleport to enemy spawn area
-local function GotoEnemySpawn(mobName)
-    local spawns = workspace["_WorldOrigin"] and workspace["_WorldOrigin"]:FindFirstChild("EnemySpawns")
-    if not spawns then return end
-    for _, spawn in pairs(spawns:GetChildren()) do
-        if string.find(spawn.Name, mobName) then
-            _tp(spawn.CFrame * CFrame.new(0, 20, 0))
-            return
-        end
-    end
-end
-
--- Sea progression: move to next sea or Submerged Island at level thresholds
+-- Sea progression
 local function KaitunSeaProgression()
-    if not _G.KaitunMode then return end
     pcall(function()
         local lvl = plr.Data.Level.Value
         local char = plr.Character
@@ -172,23 +135,18 @@ local function KaitunSeaProgression()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
 
-        -- Sea 1 -> Sea 2 (level 700+)
         if World1 and lvl >= 700 then
             _tp(CFrame.new(-5089.962, 312.883, -3124.601))
             wait(1)
             replicated.Remotes.CommF_:InvokeServer("TravelMain")
             return
         end
-
-        -- Sea 2 -> Sea 3 (level 1500+)
         if World2 and lvl >= 1500 then
             _tp(CFrame.new(-5089.962, 312.883, -3124.601))
             wait(1)
             replicated.Remotes.CommF_:InvokeServer("TravelMain")
             return
         end
-
-        -- Sea 3 -> Submerged Island (level 2600+)
         if World3 and lvl >= 2600 then
             local function IsInSubmerged()
                 if not hrp then return false end
@@ -197,8 +155,7 @@ local function KaitunSeaProgression()
                 return (playerXZ - islandPos).Magnitude < 3000
             end
             if not IsInSubmerged() then
-                local npcPos = CFrame.new(-16269.7041, 25.2288494, 1373.65955)
-                _tp(npcPos)
+                _tp(CFrame.new(-16269.7041, 25.2288494, 1373.65955))
                 wait(1)
                 pcall(function()
                     replicated.Modules.Net["RF/SubmarineWorkerSpeak"]:InvokeServer("TravelToSubmergedIsland")
@@ -209,7 +166,7 @@ local function KaitunSeaProgression()
     end)
 end
 
--- Find a live enemy by name from workspace.Enemies or replicated storage
+-- Find mob by name
 local function FindMob(mobName)
     for _, v in pairs(workspace.Enemies:GetChildren()) do
         if v.Name == mobName and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v:FindFirstChild("HumanoidRootPart") then
@@ -224,30 +181,150 @@ local function FindMob(mobName)
     return nil
 end
 
--- Main Kaitun control loop — uses dynamic quest data from the game
-task.spawn(function()
-    while task.wait(0.3) do
-        if not _G.KaitunMode then continue end
+-- Teleport to enemy spawn area
+local function GotoEnemySpawn(mobName)
+    local spawns = workspace["_WorldOrigin"] and workspace["_WorldOrigin"]:FindFirstChild("EnemySpawns")
+    if not spawns then return end
+    for _, spawn in pairs(spawns:GetChildren()) do
+        if string.find(spawn.Name, mobName) then
+            _tp(spawn.CFrame * CFrame.new(0, 20, 0))
+            return
+        end
+    end
+end
 
+-- ============================================
+-- GUI
+-- ============================================
+
+local sg = Instance.new("ScreenGui")
+sg.Name = "KaitunHub"
+sg.ResetOnSpawn = false
+sg.Parent = plr:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 280, 0, 340)
+frame.Position = UDim2.new(0, 15, 0.5, -170)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+frame.BorderColor3 = Color3.fromRGB(0, 200, 200)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = sg
+
+local titleBar = Instance.new("TextLabel")
+titleBar.Size = UDim2.new(1, 0, 0, 28)
+titleBar.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
+titleBar.Text = "  Kaitun Mode"
+titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleBar.Font = Enum.Font.GothamBold
+titleBar.TextSize = 15
+titleBar.TextXAlignment = Enum.TextXAlignment.Left
+titleBar.Parent = frame
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(1, -28, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 14
+closeBtn.Parent = frame
+closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+local function makeLabel(parent, posY, text, color)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 18)
+    lbl.Position = UDim2.new(0, 5, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = parent
+    return lbl
+end
+
+makeLabel(frame, 32, "Level: 1 / 2800", Color3.fromRGB(255, 255, 255))
+makeLabel(frame, 50, "Sea: 1 (First Sea)", nil)
+makeLabel(frame, 68, "Farming: --", nil)
+makeLabel(frame, 86, "Style: --", Color3.fromRGB(0, 255, 200))
+makeLabel(frame, 104, "Status: Starting...", Color3.fromRGB(255, 200, 100))
+
+local div = Instance.new("Frame")
+div.Size = UDim2.new(1, -10, 0, 1)
+div.Position = UDim2.new(0, 5, 0, 120)
+div.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
+div.BorderSizePixel = 0
+div.Parent = frame
+
+local stylesLabel = makeLabel(frame, 125, "Fighting Styles:", Color3.fromRGB(0, 200, 200))
+
+local styleList = {}
+local styleNames = {"Black Leg", "Electro", "Fishman Karate", "Dragon Claw", "Superhuman", "God Human", "Sanguine Art"}
+
+for i, name in ipairs(styleNames) do
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 16)
+    lbl.Position = UDim2.new(0, 15, 0, 143 + (i - 1) * 16)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "  " .. name
+    lbl.TextColor3 = Color3.fromRGB(100, 100, 100)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+    styleList[name] = lbl
+end
+
+local statusLbl = makeLabel(frame, 143 + #styleNames * 16 + 4, "made by josiah", Color3.fromRGB(80, 80, 80))
+statusLbl.TextXAlignment = Enum.TextXAlignment.Center
+statusLbl.Size = UDim2.new(1, 0, 0, 16)
+statusLbl.Position = UDim2.new(0, 0, 0, 143 + #styleNames * 16 + 4)
+
+-- Assign aliases for GUI updates
+local levelLbl = frame:FindFirstChild("TextLabel")
+local seaLbl, farmLbl, styleLbl, statusText
+
+for _, v in pairs(frame:GetChildren()) do
+    if v:IsA("TextLabel") then
+        if v.Text:find("^Level:") then levelLbl = v
+        elseif v.Text:find("^Sea:") then seaLbl = v
+        elseif v.Text:find("^Farming:") then farmLbl = v
+        elseif v.Text:find("^Style:") then styleLbl = v
+        elseif v.Text:find("^Status:") then statusText = v
+        end
+    end
+end
+
+-- ============================================
+-- Main farming loop
+-- ============================================
+
+task.spawn(function()
+    local styleCheckTimer = 0
+    while task.wait(0.3) do
         pcall(function()
             local char = plr.Character or plr.CharacterAdded:Wait()
             local hrp = char:WaitForChild("HumanoidRootPart")
             if not hrp then return end
 
-            -- Step 1: Sea progression check
+            -- Sea progression
             KaitunSeaProgression()
 
-            -- Step 2: Fighting style upgrade
-            KaitunFightingStyle()
+            -- Fighting style + stats (every 3s, not every tick)
+            styleCheckTimer = styleCheckTimer + 1
+            if styleCheckTimer >= 10 then
+                styleCheckTimer = 0
+                KaitunFightingStyle()
+                KaitunAutoStats()
+            end
 
-            -- Step 3: Auto stats
-            KaitunAutoStats()
-
-            -- Step 4: Dynamic quest-based farming
+            -- Quest-based farming
             local questUI = plr.PlayerGui.Main.Quest
             local QuestTitle = questUI.Visible and questUI.Container.QuestTitle.Title.Text or ""
 
-            -- Get quest data dynamically from the game's Quests module
             local questData = QuestNeta()
             if not questData or not questData[1] then task.wait(1); return end
 
@@ -274,12 +351,6 @@ task.spawn(function()
                         replicated.Remotes.CommF_:InvokeServer("StartQuest", questName, questId)
                     end
                 else
-                    -- Try finding the NPC directly
-                    local foundPos = FindQuestNPC(questName)
-                    if foundPos then
-                        _tp(foundPos)
-                        task.wait(0.5)
-                    end
                     replicated.Remotes.CommF_:InvokeServer("StartQuest", questName, questId)
                 end
                 task.wait(0.5)
@@ -293,31 +364,27 @@ task.spawn(function()
                     task.wait(Sec)
                     if hrp and mob and mob:FindFirstChild("HumanoidRootPart") then
                         _tp(mob.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
-                        Attack.Kill(mob, _G.KaitunMode)
+                        Attack.Kill(mob, true)
                     end
-                until not _G.KaitunMode or not mob.Parent or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health <= 0 or not questUI.Visible
+                until not mob.Parent or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health <= 0 or not questUI.Visible
             else
-                -- No mob found, go to enemy spawn area
                 GotoEnemySpawn(enemyName)
             end
         end)
     end
 end)
 
--- Auto-collect nearby chests in Kaitun mode
+-- Auto-collect chests
 task.spawn(function()
     while task.wait(2) do
-        if not _G.KaitunMode then continue end
         pcall(function()
             local char = plr.Character
             if not char then return end
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
-
             local CollectionService = game:GetService("CollectionService")
             local chests = CollectionService:GetTagged("_ChestTagged")
             local nearest, nearDist = nil, math.huge
-
             for _, chest in ipairs(chests) do
                 if not chest:GetAttribute("IsDisabled") then
                     local dist = (chest:GetPivot().Position - hrp.Position).Magnitude
@@ -327,10 +394,93 @@ task.spawn(function()
                     end
                 end
             end
-
             if nearest then
                 _tp(nearest:GetPivot())
                 task.wait(0.5)
+            end
+        end)
+    end
+end)
+
+-- GUI update loop
+task.spawn(function()
+    local seaNames = {[1] = "1 (First Sea)", [2] = "2 (Second Sea)", [3] = "3 (Third Sea)"}
+    local function GetStyleLevel(name)
+        local bp = plr.Backpack:FindFirstChild(name)
+        local ch = plr.Character:FindFirstChild(name)
+        local tool = bp or ch
+        if tool and tool:FindFirstChild("Level") then
+            return tool.Level.Value
+        end
+        return 0
+    end
+
+    while task.wait(0.5) do
+        pcall(function()
+            local lvl = plr.Data.Level.Value
+            local sea = (World1 and 1) or (World2 and 2) or (World3 and 3) or 1
+            levelLbl.Text = "Level: " .. string.format("%d / 2800", lvl)
+            seaLbl.Text = "Sea: " .. (seaNames[sea] or "?")
+
+            -- Farming target
+            local questUI = plr.PlayerGui.Main.Quest
+            if questUI.Visible then
+                local title = questUI.Container.QuestTitle.Title.Text
+                farmLbl.Text = "Farming: " .. title
+                statusText.Text = "Status: Engaging enemy..."
+                statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+            else
+                farmLbl.Text = "Farming: Seeking quest..."
+                statusText.Text = "Status: Traveling..."
+                statusText.TextColor3 = Color3.fromRGB(255, 200, 100)
+            end
+
+            -- Fighting style progress
+            local currentStyle = "None"
+            local currentLevel = 0
+            local styleChecks = {"God Human", "Sanguine Art", "Superhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate", "Death Step", "Dragon Claw", "Fishman Karate", "Electro", "Black Leg", "Combat"}
+            for _, s in ipairs(styleChecks) do
+                local sl = GetStyleLevel(s)
+                if sl > 0 then
+                    currentStyle = s
+                    currentLevel = sl
+                    break
+                end
+            end
+            if currentStyle ~= "None" then
+                styleLbl.Text = "Style: " .. currentStyle .. " (" .. currentLevel .. "/400)"
+            else
+                styleLbl.Text = "Style: Combat"
+            end
+
+            -- Fighting styles unlocked display
+            local unlockOrder = {"Black Leg", "Electro", "Fishman Karate", "Dragon Claw", "Superhuman", "God Human", "Sanguine Art"}
+            local foundActive = false
+            for _, name in ipairs(unlockOrder) do
+                local lbl = styleList[name]
+                if lbl then
+                    local sl = GetStyleLevel(name)
+                    local owned = GetBP(name)
+                    if owned then
+                        if name == currentStyle then
+                            lbl.Text = "→ " .. name .. " (" .. sl .. "/400)"
+                            lbl.TextColor3 = Color3.fromRGB(0, 255, 200)
+                            foundActive = true
+                        else
+                            lbl.Text = "✓ " .. name
+                            lbl.TextColor3 = Color3.fromRGB(100, 255, 100)
+                        end
+                    else
+                        if not foundActive then
+                            lbl.Text = "→ " .. name .. " (locked)"
+                            lbl.TextColor3 = Color3.fromRGB(255, 200, 100)
+                            foundActive = true
+                        else
+                            lbl.Text = "  " .. name
+                            lbl.TextColor3 = Color3.fromRGB(80, 80, 80)
+                        end
+                    end
+                end
             end
         end)
     end

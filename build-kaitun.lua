@@ -1,13 +1,12 @@
 --[[
-    Sigma Hub v1.0 — Build Script
-    Concatenates all module files into a single loadstring-compatible file.
+    Kaitun Standalone — Build Script
+    Concatenates dependency modules + Kaitun logic into a single file.
 
-    Usage: lua build.lua
-    Output: dist/SigmaHub.lua
+    Usage: lua build-kaitun.lua
+    Output: dist/Kaitun.lua
 ]]
 
 local Modules = {
-    "modules/_banner.lua",
     "modules/01-core.lua",
     "modules/02-world.lua",
     "modules/03-remotes.lua",
@@ -17,24 +16,11 @@ local Modules = {
     "modules/07-utility.lua",
     "modules/08-movement.lua",
     "modules/09-quest.lua",
-    "modules/10-ui.lua",
-    "modules/11a-main-features.lua",
-    "modules/11b-settings.lua",
-    "modules/11c-fishing.lua",
-    "modules/11d-quests.lua",
-    "modules/11e-race.lua",
-    "modules/11f-prehistoric.lua",
-    "modules/11g-sea-events.lua",
-    "modules/11h-esp.lua",
-    "modules/11i-raids.lua",
-    "modules/11j-combat.lua",
-    "modules/11k-travel.lua",
-    "modules/11l-shop.lua",
-    "modules/11m-misc.lua",
+    "modules/11n-kaitun.lua",
 }
 
 local scriptDir = (... or ".") .. "/"
-local outputPath = scriptDir .. "dist/SigmaHub.lua"
+local outputPath = scriptDir .. "dist/Kaitun.lua"
 local outputLines = {}
 
 for _, modPath in ipairs(Modules) do

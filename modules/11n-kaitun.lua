@@ -7,6 +7,16 @@
 
 _G.KaitunStandalone = true
 
+-- MousePos for NameCall hook (06-enemy.lua)
+MousePos = Vector3.new(0, 0, 0)
+spawn(function()
+    while task.wait() do
+        pcall(function()
+            MousePos = game.Players.LocalPlayer:GetMouse().Hit.Position
+        end)
+    end
+end)
+
 -- Destroy Sigma Hub UI if present
 pcall(function()
     for _, v in pairs(plr.PlayerGui:GetChildren()) do

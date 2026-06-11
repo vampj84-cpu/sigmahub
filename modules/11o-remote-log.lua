@@ -10,8 +10,21 @@ local MIN_INTERVAL = 30
 local lastIssueTime = 0
 local errCount = 0
 local logCache = {}
+local httpReq = nil
+
+-- Detect available HTTP request function
+do
+    local tries = {request, syn and syn.request, http_request}
+    for _, fn in ipairs(tries) do
+        if type(fn) == "function" then
+            httpReq = fn
+            break
+        end
+    end
+end
 
 local function githubRequest(endpoint, method, body)
+    if not httpReq then return nil end
     local http = game:GetService("HttpService")
     local url = "https://api.github.com/repos/" .. REPO .. "/" .. endpoint
     local headers = {
@@ -19,20 +32,12 @@ local function githubRequest(endpoint, method, body)
         ["Content-Type"] = "application/json",
         ["User-Agent"] = "Kaitun/1.0"
     }
-    return request({
+    return httpReq({
         Url = url,
         Method = method or "POST",
         Headers = headers,
         Body = body and http:JSONEncode(body) or nil
     })
-end
-
-local function getDevice()
-    local success, result = pcall(function()
-        return syn.crypto.random(4)
-    end)
-    if success then return result end
-    return ""
 end
 
 local function flushLog()
@@ -41,15 +46,14 @@ local function flushLog()
     pcall(function()
         local entry = table.remove(logCache, 1)
         local body = string.format(
-            "**Error:** `%s`\n\n**Context:** %s\n**Player:** %s\n**Level:** %d\n**Sea:** %s\n**Time:** %s\n**Error #:** %d\n**Device:** %s",
+            "**Error:** `%s`\n\n**Context:** %s\n**Player:** %s\n**Level:** %d\n**Sea:** %s\n**Time:** %s\n**Error #:** %d",
             tostring(entry.err):gsub("`", ""),
             entry.context,
             plr.Name,
             plr and plr.Data and plr.Data.Level and plr.Data.Level.Value or 0,
             (World1 and "1" or World2 and "2" or World3 and "3" or "?"),
             os.date("%Y-%m-%d %H:%M:%S"),
-            errCount,
-            getDevice()
+            errCount
         )
         local resp = githubRequest("issues", "POST", {
             title = "Kaitun: " .. entry.context,
@@ -68,11 +72,22 @@ task.spawn(function()
     end
 end)
 
+-- Sanity test: create a startup issue to confirm logging works
+task.spawn(function()
+    task.wait(5)
+    if httpReq then
+        RemoteLog:info("Startup", "Kaitun v2 started — logging online")
+    else
+        warn("[RemoteLog] No HTTP request function available — errors will not reach GitHub")
+    end
+end)
+
 RemoteLog = {
+    ready = httpReq ~= nil,
+
     log = function(self, context, err)
         errCount = errCount + 1
         local key = tostring(err) .. context
-        -- Deduplicate: skip if same error+context in last 60s
         local now = tick()
         for i, entry in ipairs(logCache) do
             if entry.key == key and now - entry.time < 60 then
@@ -88,17 +103,17 @@ RemoteLog = {
     end,
 
     info = function(self, context, message)
+        if not httpReq then return end
         errCount = errCount + 1
         pcall(function()
             local body = string.format(
-                "**Info:** %s\n\n**Context:** %s\n**Player:** %s\n**Level:** %d\n**Sea:** %s\n**Time:** %s\n**Device:** %s",
+                "**Info:** %s\n\n**Context:** %s\n**Player:** %s\n**Level:** %d\n**Sea:** %s\n**Time:** %s",
                 message:gsub("`", ""),
                 context,
                 plr.Name,
                 plr.Data.Level.Value,
                 (World1 and "1" or World2 and "2" or World3 and "3" or "?"),
-                os.date("%Y-%m-%d %H:%M:%S"),
-                getDevice()
+                os.date("%Y-%m-%d %H:%M:%S")
             )
             githubRequest("issues", "POST", {
                 title = "Kaitun Info: " .. context,

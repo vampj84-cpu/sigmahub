@@ -1050,13 +1050,14 @@ local logCache = {}
 local httpReq = nil
 
 -- Detect available HTTP request function
-do
-    local tries = {request, syn and syn.request, http_request}
-    for _, fn in ipairs(tries) do
-        if type(fn) == "function" then
-            httpReq = fn
-            break
-        end
+for _, name in ipairs({"request", "syn", "http_request"}) do
+    local v = _G[name]
+    if type(v) == "function" then
+        httpReq = v
+        break
+    elseif type(v) == "table" and type(v.request) == "function" then
+        httpReq = v.request
+        break
     end
 end
 

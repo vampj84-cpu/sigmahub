@@ -51,15 +51,7 @@ local Tabs = {
 -- ============================================
 
 Tabs.Info:AddSection("Information")
-Tabs.Info:AddDiscordInvite({
-    Title = "Sigma Hub | Community",
-    Description = "A community for Sigma Hub Users - official scripts, updates, and support.",
-    Banner = "rbxassetid://127632820302449",
-    Logo = "rbxassetid://127632820302449",
-    Invite = "https://discord.gg/HJbtKcHAw",
-    Members = 36,
-    Online = 67
-})
+-- Discord invite removed
 
 Tabs.Info:AddSection("Status Server")
 local TimeZone = Tabs.Info:AddParagraph("Time Zone", "")
@@ -241,22 +233,10 @@ FarmLevel = Tabs.Main:AddToggle({
 
 KaitunToggle = Tabs.Main:AddToggle({
     Name = "Kaitun Mode (Auto Everything)",
-    Description = "One toggle to rule them all",
+    Description = "Intelligent auto-progression from level 1 to 2550",
     Default = false,
     Callback = function(Value)
         _G.KaitunMode = Value
-        if Value then
-            _G.Level = true
-            _G.AutoStats = true
-            _G.AutoFarmNear = true
-            _G.AutoFarmChest = true
-            alreadyTeleported = false
-            teleporting = false
-        else
-            _G.AutoStats = false
-            _G.AutoFarmNear = false
-            _G.AutoFarmChest = false
-        end
     end
 })
 

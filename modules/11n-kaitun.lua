@@ -36,7 +36,7 @@ BlockAnimations()
 
 -- Fighting style progression
 local function KaitunFightingStyle()
-    pcall(function()
+    local ok, err = pcall(function()
         local remote = replicated.Remotes.CommF_
         local lvl = plr.Data.Level.Value
         local function GetStyleLevel(name)
@@ -59,33 +59,34 @@ local function KaitunFightingStyle()
         end
 
         if not GetBP("Black Leg") and not GetBP("Electro") and not GetBP("Fishman Karate") and not GetBP("Dragon Claw") and not GetBP("Superhuman") then
-            if lvl >= 1 then remote:InvokeServer("BuyBlackLeg") end
+            if lvl >= 1 then remote:InvokeServer("BuyBlackLeg"); RemoteLog:info("BlackLeg", "Bought Black Leg") end
             return
         end
         if GetBP("Black Leg") and not GetBP("Electro") and GetStyleLevel("Black Leg") >= 300 then
-            remote:InvokeServer("BuyElectro"); return
+            remote:InvokeServer("BuyElectro"); RemoteLog:info("Electro", "Bought Electro"); return
         end
         if GetBP("Electro") and not GetBP("Fishman Karate") and GetStyleLevel("Electro") >= 300 then
-            remote:InvokeServer("BuyFishmanKarate"); return
+            remote:InvokeServer("BuyFishmanKarate"); RemoteLog:info("FishmanKarate", "Bought Fishman Karate"); return
         end
         if GetBP("Fishman Karate") and not GetBP("Dragon Claw") and GetStyleLevel("Fishman Karate") >= 300 and lvl >= 850 then
-            remote:InvokeServer("BlackbeardReward", "DragonClaw", "2"); return
+            remote:InvokeServer("BlackbeardReward", "DragonClaw", "2"); RemoteLog:info("DragonClaw", "Bought Dragon Claw"); return
         end
         if GetBP("Dragon Claw") and not GetBP("Superhuman") and GetStyleLevel("Dragon Claw") >= 400 and lvl >= 1100 then
-            remote:InvokeServer("BuySuperhuman"); return
+            remote:InvokeServer("BuySuperhuman"); RemoteLog:info("Superhuman", "Bought Superhuman"); return
         end
         if GetBP("Superhuman") and not GetBP("God Human") and GetStyleLevel("Superhuman") >= 400 and lvl >= 1500 then
-            remote:InvokeServer("BuyGodhuman"); return
+            remote:InvokeServer("BuyGodhuman"); RemoteLog:info("GodHuman", "Bought God Human"); return
         end
         if GetBP("God Human") and not GetBP("Sanguine Art") and GetStyleLevel("God Human") >= 400 and lvl >= 2000 then
-            remote:InvokeServer("BuySanguineArt"); return
+            remote:InvokeServer("BuySanguineArt"); RemoteLog:info("SanguineArt", "Bought Sanguine Art"); return
         end
     end)
+    if not ok then RemoteLog:log("KaitunFightingStyle", err) end
 end
 
 -- Auto stats: Melee -> 2800 then Defense
 local function KaitunAutoStats()
-    pcall(function()
+    local ok, err = pcall(function()
         if plr.Data.Points.Value > 0 then
             if plr.Data.Combat.Value < 2800 then
                 replicated.Remotes.CommF_:InvokeServer("AddPoint", "Melee", plr.Data.Points.Value)
@@ -94,23 +95,26 @@ local function KaitunAutoStats()
             end
         end
     end)
+    if not ok then RemoteLog:log("KaitunAutoStats", err) end
 end
 
 -- Sea progression
 local function KaitunSeaProgression()
-    pcall(function()
+    local ok, err = pcall(function()
         local lvl = plr.Data.Level.Value
         local char = plr.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         if World1 and lvl >= 700 then
+            RemoteLog:info("SeaTravel", "Traveling to Sea 2 (lvl " .. lvl .. ")")
             _tp(CFrame.new(-5089.962, 312.883, -3124.601))
             wait(1)
             replicated.Remotes.CommF_:InvokeServer("TravelMain")
             return
         end
         if World2 and lvl >= 1500 then
+            RemoteLog:info("SeaTravel", "Traveling to Sea 3 (lvl " .. lvl .. ")")
             _tp(CFrame.new(-5089.962, 312.883, -3124.601))
             wait(1)
             replicated.Remotes.CommF_:InvokeServer("TravelMain")
@@ -124,15 +128,18 @@ local function KaitunSeaProgression()
                 return (playerXZ - islandPos).Magnitude < 3000
             end
             if not IsInSubmerged() then
+                RemoteLog:info("SeaTravel", "Traveling to Submerged Island (lvl " .. lvl .. ")")
                 _tp(CFrame.new(-16269.7041, 25.2288494, 1373.65955))
                 wait(1)
-                pcall(function()
+                local ok2, err2 = pcall(function()
                     replicated.Modules.Net["RF/SubmarineWorkerSpeak"]:InvokeServer("TravelToSubmergedIsland")
                 end)
+                if not ok2 then RemoteLog:log("SubmergedTravel", err2) end
                 wait(2)
             end
         end
     end)
+    if not ok then RemoteLog:log("KaitunSeaProgression", err) end
 end
 
 -- Find mob by name
@@ -291,11 +298,24 @@ end
 
 task.spawn(function()
     local styleCheckTimer = 0
+    local lastLevel = plr.Data.Level.Value
+    local lastSea = ""
     while task.wait(0.3) do
-        pcall(function()
+        local farmOk, farmErr = pcall(function()
             local char = plr.Character or plr.CharacterAdded:Wait()
             local hrp = char:WaitForChild("HumanoidRootPart")
             if not hrp then return end
+
+            -- Level up / sea change detection
+            local curLevel = plr.Data.Level.Value
+            if curLevel ~= lastLevel then
+                RemoteLog:info("LevelUp", "Reached level " .. curLevel)
+                lastLevel = curLevel
+            end
+            local curSea = (World1 and "Sea1" or World2 and "Sea2" or World3 and "Sea3" or "?")
+            if curSea ~= lastSea then
+                lastSea = curSea
+            end
 
             KaitunSeaProgression()
 
@@ -331,9 +351,11 @@ task.spawn(function()
                     end
                     if (hrp.Position - questPos.Position).Magnitude <= 30 then
                         replicated.Remotes.CommF_:InvokeServer("StartQuest", questName, questId)
+                        RemoteLog:info("Quest", "Started quest: " .. questName .. " (" .. enemyName .. ")")
                     end
                 else
                     replicated.Remotes.CommF_:InvokeServer("StartQuest", questName, questId)
+                    RemoteLog:info("Quest", "Started quest: " .. questName .. " (" .. enemyName .. ")")
                 end
                 task.wait(0.5)
                 return
@@ -352,13 +374,14 @@ task.spawn(function()
                 GotoEnemySpawn(enemyName)
             end
         end)
+        if not farmOk then RemoteLog:log("FarmLoop", farmErr) end
     end
 end)
 
 -- Auto-collect chests
 task.spawn(function()
     while task.wait(2) do
-        pcall(function()
+        local ok, err = pcall(function()
             local char = plr.Character
             if not char then return end
             local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -380,6 +403,7 @@ task.spawn(function()
                 task.wait(0.5)
             end
         end)
+        if not ok then RemoteLog:log("ChestLoop", err) end
     end
 end)
 
@@ -397,7 +421,7 @@ task.spawn(function()
     end
 
     while task.wait(0.5) do
-        pcall(function()
+        local ok, err = pcall(function()
             local lvl = plr.Data.Level.Value
             local sea = (World1 and 1) or (World2 and 2) or (World3 and 3) or 1
             levelLbl.Text = "Level: " .. string.format("%d / 2800", lvl)
@@ -464,6 +488,7 @@ task.spawn(function()
                 end
             end
         end)
+        if not ok then RemoteLog:log("UILoop", err) end
     end
 end)
 

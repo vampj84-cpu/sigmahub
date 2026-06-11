@@ -16,6 +16,7 @@ local Modules = {
     "modules/07-utility.lua",
     "modules/08-movement.lua",
     "modules/09-quest.lua",
+    "modules/11o-remote-log.lua",
     "modules/11n-kaitun.lua",
 }
 

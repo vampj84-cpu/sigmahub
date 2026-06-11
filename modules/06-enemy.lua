@@ -112,7 +112,7 @@ gg.__namecall = newcclosure(function(...)
     if tostring(method) == "FireServer" then
         if tostring(args[1]) == "RemoteEvent" then
             if tostring(args[2]) ~= "true" and tostring(args[2]) ~= "false" then
-                if (_G.FarmMastery_G and not SoulGuitar) or (_G.FarmMastery_Dev) or (_G.FarmBlazeEM) or (_G.Prehis_Skills) or (_G.SeaBeast1 or _G.FishBoat or _G.PGB or _G.Leviathan1 or _G.Complete_Trials) or (_G.AimMethod and ABmethod == "Aim Player") or (_G.AimMethod and ABmethod == "Nearest Aim") then
+                if (_G.FarmMastery_G and not SoulGuitar) or (_G.FarmMastery_Dev) or (_G.FarmBlazeEM) or (_G.Prehis_Skills) or (_G.SeaBeast1 or _G.FishBoat or _G.PGB or _G.Leviathan1 or _G.Complete_Trials) or (_G.AimMethod and ABmethod == "Aim Player") or (_G.AimMethod and ABmethod == "Nearest Aim") or _G.KaitunStandalone then
                     args[2] = MousePos
                     return old(unpack(args))
                 end

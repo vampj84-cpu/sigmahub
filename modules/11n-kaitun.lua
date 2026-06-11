@@ -1,19 +1,11 @@
 -- ============================================
 -- MODULE 11n: Kaitun Standalone
 -- Self-contained auto-progression with GUI.
--- Loaded via: build-kaitun.lua (concatenated
--- with modules 01-09 for full dependency).
+-- NameCall hook is handled by 06-enemy.lua
+-- via _G.KaitunStandalone flag.
 -- ============================================
 
--- Initialize MousePos for NameCall hook
-MousePos = Vector3.new(0, 0, 0)
-spawn(function()
-    while task.wait() do
-        pcall(function()
-            MousePos = game.Players.LocalPlayer:GetMouse().Hit.Position
-        end)
-    end
-end)
+_G.KaitunStandalone = true
 
 -- Destroy Sigma Hub UI if present
 pcall(function()
@@ -22,26 +14,6 @@ pcall(function()
             v:Destroy()
         end
     end
-end)
-
--- NameCall hook for auto-aim
-pcall(function()
-    local gg = getrawmetatable(game)
-    local old = gg.__namecall
-    setreadonly(gg, false)
-    gg.__namecall = newcclosure(function(...)
-        local method = getnamecallmethod()
-        local args = {...}
-        if tostring(method) == "FireServer" then
-            if tostring(args[1]) == "RemoteEvent" then
-                if tostring(args[2]) ~= "true" and tostring(args[2]) ~= "false" then
-                    args[2] = MousePos
-                    return old(unpack(args))
-                end
-            end
-        end
-        return old(...)
-    end)
 end)
 
 -- No Animation blocker
@@ -67,7 +39,6 @@ local function KaitunFightingStyle()
     pcall(function()
         local remote = replicated.Remotes.CommF_
         local lvl = plr.Data.Level.Value
-
         local function GetStyleLevel(name)
             local bp = plr.Backpack:FindFirstChild(name)
             local ch = plr.Character:FindFirstChild(name)
@@ -78,7 +49,6 @@ local function KaitunFightingStyle()
             return 0
         end
 
-        -- Equip best available fighting style
         local prio = {"God Human", "Sanguine Art", "Superhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate", "Death Step", "Dragon Claw", "Fishman Karate", "Electro", "Black Leg", "Combat"}
         for _, s in ipairs(prio) do
             if plr.Backpack:FindFirstChild(s) then
@@ -113,7 +83,7 @@ local function KaitunFightingStyle()
     end)
 end
 
--- Auto stats: Melee → 2800 then Defense
+-- Auto stats: Melee -> 2800 then Defense
 local function KaitunAutoStats()
     pcall(function()
         if plr.Data.Points.Value > 0 then
@@ -134,7 +104,6 @@ local function KaitunSeaProgression()
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-
         if World1 and lvl >= 700 then
             _tp(CFrame.new(-5089.962, 312.883, -3124.601))
             wait(1)
@@ -197,48 +166,49 @@ end
 -- GUI
 -- ============================================
 
+local ac = Color3.fromRGB
 local sg = Instance.new("ScreenGui")
 sg.Name = "KaitunHub"
 sg.ResetOnSpawn = false
 sg.Parent = plr:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 280, 0, 340)
-frame.Position = UDim2.new(0, 15, 0.5, -170)
-frame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-frame.BorderColor3 = Color3.fromRGB(0, 200, 200)
-frame.Active = true
-frame.Draggable = true
-frame.Parent = sg
+local f = Instance.new("Frame")
+f.Size = UDim2.new(0, 300, 0, 360)
+f.Position = UDim2.new(0, 15, 0.5, -180)
+f.BackgroundColor3 = ac(8, 8, 12)
+f.BorderColor3 = ac(0, 180, 180)
+f.Active = true
+f.Draggable = true
+f.Parent = sg
 
-local titleBar = Instance.new("TextLabel")
-titleBar.Size = UDim2.new(1, 0, 0, 28)
-titleBar.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
-titleBar.Text = "  Kaitun Mode"
-titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleBar.Font = Enum.Font.GothamBold
-titleBar.TextSize = 15
-titleBar.TextXAlignment = Enum.TextXAlignment.Left
-titleBar.Parent = frame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 28)
+title.BackgroundColor3 = ac(0, 150, 150)
+title.Text = "  Kaitun Mode"
+title.TextColor3 = ac(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = f
 
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 28, 0, 28)
-closeBtn.Position = UDim2.new(1, -28, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14
-closeBtn.Parent = frame
-closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 28, 0, 28)
+close.Position = UDim2.new(1, -28, 0, 0)
+close.BackgroundColor3 = ac(180, 40, 40)
+close.Text = "X"
+close.TextColor3 = ac(255, 255, 255)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.Parent = f
+close.MouseButton1Click:Connect(function() sg:Destroy(); _G.KaitunStandalone = nil end)
 
-local function makeLabel(parent, posY, text, color)
+local function makeLbl(parent, posY, text, color, size)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -10, 0, 18)
+    lbl.Size = UDim2.new(1, -10, 0, size or 16)
     lbl.Position = UDim2.new(0, 5, 0, posY)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    lbl.TextColor3 = color or ac(180, 180, 180)
     lbl.Font = Enum.Font.Gotham
     lbl.TextSize = 13
     lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -246,54 +216,71 @@ local function makeLabel(parent, posY, text, color)
     return lbl
 end
 
-makeLabel(frame, 32, "Level: 1 / 2800", Color3.fromRGB(255, 255, 255))
-makeLabel(frame, 50, "Sea: 1 (First Sea)", nil)
-makeLabel(frame, 68, "Farming: --", nil)
-makeLabel(frame, 86, "Style: --", Color3.fromRGB(0, 255, 200))
-makeLabel(frame, 104, "Status: Starting...", Color3.fromRGB(255, 200, 100))
+local function makeBar(parent, posY, fillColor)
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, -10, 0, 10)
+    bg.Position = UDim2.new(0, 5, 0, posY)
+    bg.BackgroundColor3 = ac(20, 20, 30)
+    bg.BorderSizePixel = 0
+    bg.Parent = parent
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = fillColor or ac(0, 200, 200)
+    fill.BorderSizePixel = 0
+    fill.Parent = bg
+    return fill
+end
+
+makeLbl(f, 32, "Level: 1 / 2800", ac(255, 255, 255))
+local levelBarFill = makeBar(f, 50, ac(0, 200, 200))
+makeLbl(f, 62, "Sea: 1 (First Sea)", nil)
+makeLbl(f, 78, "Status: Starting...", ac(255, 200, 80))
+makeLbl(f, 94, "Farming: --", nil)
 
 local div = Instance.new("Frame")
 div.Size = UDim2.new(1, -10, 0, 1)
-div.Position = UDim2.new(0, 5, 0, 120)
-div.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
+div.Position = UDim2.new(0, 5, 0, 112)
+div.BackgroundColor3 = ac(0, 150, 150)
 div.BorderSizePixel = 0
-div.Parent = frame
+div.Parent = f
 
-local stylesLabel = makeLabel(frame, 125, "Fighting Styles:", Color3.fromRGB(0, 200, 200))
+makeLbl(f, 116, "Style: Combat", ac(0, 220, 180), 14)
+local styleBarFill = makeBar(f, 132, ac(0, 220, 120))
+
+makeLbl(f, 146, "Fighting Styles:", ac(0, 180, 180), 14)
 
 local styleList = {}
 local styleNames = {"Black Leg", "Electro", "Fishman Karate", "Dragon Claw", "Superhuman", "God Human", "Sanguine Art"}
-
 for i, name in ipairs(styleNames) do
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -10, 0, 16)
-    lbl.Position = UDim2.new(0, 15, 0, 143 + (i - 1) * 16)
+    lbl.Position = UDim2.new(0, 15, 0, 162 + (i - 1) * 16)
     lbl.BackgroundTransparency = 1
     lbl.Text = "  " .. name
-    lbl.TextColor3 = Color3.fromRGB(100, 100, 100)
+    lbl.TextColor3 = ac(80, 80, 80)
     lbl.Font = Enum.Font.Gotham
     lbl.TextSize = 12
     lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
+    lbl.Parent = f
     styleList[name] = lbl
 end
 
-local statusLbl = makeLabel(frame, 143 + #styleNames * 16 + 4, "made by josiah", Color3.fromRGB(80, 80, 80))
-statusLbl.TextXAlignment = Enum.TextXAlignment.Center
-statusLbl.Size = UDim2.new(1, 0, 0, 16)
-statusLbl.Position = UDim2.new(0, 0, 0, 143 + #styleNames * 16 + 4)
+local footer = makeLbl(f, 162 + #styleNames * 16 + 6, "made by josiah", ac(70, 70, 70))
+footer.TextXAlignment = Enum.TextXAlignment.Center
+footer.Size = UDim2.new(1, 0, 0, 16)
+footer.Position = UDim2.new(0, 0, 0, 162 + #styleNames * 16 + 6)
 
--- Assign aliases for GUI updates
-local levelLbl = frame:FindFirstChild("TextLabel")
-local seaLbl, farmLbl, styleLbl, statusText
-
-for _, v in pairs(frame:GetChildren()) do
+-- GUI update references
+local levelLbl = f:FindFirstChild("TextLabel")
+local seaLbl, statusText, farmLbl, styleLbl
+for _, v in pairs(f:GetChildren()) do
     if v:IsA("TextLabel") then
-        if v.Text:find("^Level:") then levelLbl = v
-        elseif v.Text:find("^Sea:") then seaLbl = v
-        elseif v.Text:find("^Farming:") then farmLbl = v
-        elseif v.Text:find("^Style:") then styleLbl = v
-        elseif v.Text:find("^Status:") then statusText = v
+        local t = v.Text
+        if t:find("^Level:") then levelLbl = v
+        elseif t:find("^Sea:") then seaLbl = v
+        elseif t:find("^Status:") then statusText = v
+        elseif t:find("^Farming:") then farmLbl = v
+        elseif t:find("^Style:") then styleLbl = v
         end
     end
 end
@@ -310,10 +297,8 @@ task.spawn(function()
             local hrp = char:WaitForChild("HumanoidRootPart")
             if not hrp then return end
 
-            -- Sea progression
             KaitunSeaProgression()
 
-            -- Fighting style + stats (every 3s, not every tick)
             styleCheckTimer = styleCheckTimer + 1
             if styleCheckTimer >= 10 then
                 styleCheckTimer = 0
@@ -321,7 +306,6 @@ task.spawn(function()
                 KaitunAutoStats()
             end
 
-            -- Quest-based farming
             local questUI = plr.PlayerGui.Main.Quest
             local QuestTitle = questUI.Visible and questUI.Container.QuestTitle.Title.Text or ""
 
@@ -333,14 +317,12 @@ task.spawn(function()
             local questId = questData[2]
             local questPos = questData[6]
 
-            -- Abandon wrong quest
             if questUI.Visible and not string.find(QuestTitle, enemyName) then
                 replicated.Remotes.CommF_:InvokeServer("AbandonQuest")
                 task.wait(0.3)
                 return
             end
 
-            -- Accept quest
             if not questUI.Visible then
                 if questPos then
                     if (hrp.Position - questPos.Position).Magnitude > 20 then
@@ -357,7 +339,6 @@ task.spawn(function()
                 return
             end
 
-            -- Find and kill mobs
             local mob = FindMob(enemyName)
             if mob then
                 repeat
@@ -420,22 +401,21 @@ task.spawn(function()
             local lvl = plr.Data.Level.Value
             local sea = (World1 and 1) or (World2 and 2) or (World3 and 3) or 1
             levelLbl.Text = "Level: " .. string.format("%d / 2800", lvl)
+            levelBarFill:TweenSize(UDim2.new(lvl / 2800, 0, 1, 0), "Out", "Linear", 0.3, true)
             seaLbl.Text = "Sea: " .. (seaNames[sea] or "?")
 
-            -- Farming target
             local questUI = plr.PlayerGui.Main.Quest
             if questUI.Visible then
                 local title = questUI.Container.QuestTitle.Title.Text
                 farmLbl.Text = "Farming: " .. title
                 statusText.Text = "Status: Engaging enemy..."
-                statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+                statusText.TextColor3 = ac(80, 230, 80)
             else
                 farmLbl.Text = "Farming: Seeking quest..."
                 statusText.Text = "Status: Traveling..."
-                statusText.TextColor3 = Color3.fromRGB(255, 200, 100)
+                statusText.TextColor3 = ac(230, 180, 60)
             end
 
-            -- Fighting style progress
             local currentStyle = "None"
             local currentLevel = 0
             local styleChecks = {"God Human", "Sanguine Art", "Superhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate", "Death Step", "Dragon Claw", "Fishman Karate", "Electro", "Black Leg", "Combat"}
@@ -449,11 +429,12 @@ task.spawn(function()
             end
             if currentStyle ~= "None" then
                 styleLbl.Text = "Style: " .. currentStyle .. " (" .. currentLevel .. "/400)"
+                styleBarFill:TweenSize(UDim2.new(currentLevel / 400, 0, 1, 0), "Out", "Linear", 0.3, true)
             else
                 styleLbl.Text = "Style: Combat"
+                styleBarFill:TweenSize(UDim2.new(0, 0, 1, 0), "Out", "Linear", 0.3, true)
             end
 
-            -- Fighting styles unlocked display
             local unlockOrder = {"Black Leg", "Electro", "Fishman Karate", "Dragon Claw", "Superhuman", "God Human", "Sanguine Art"}
             local foundActive = false
             for _, name in ipairs(unlockOrder) do
@@ -463,21 +444,21 @@ task.spawn(function()
                     local owned = GetBP(name)
                     if owned then
                         if name == currentStyle then
-                            lbl.Text = "→ " .. name .. " (" .. sl .. "/400)"
-                            lbl.TextColor3 = Color3.fromRGB(0, 255, 200)
+                            lbl.Text = "-> " .. name .. " (" .. sl .. "/400)"
+                            lbl.TextColor3 = ac(0, 255, 200)
                             foundActive = true
                         else
                             lbl.Text = "✓ " .. name
-                            lbl.TextColor3 = Color3.fromRGB(100, 255, 100)
+                            lbl.TextColor3 = ac(80, 230, 80)
                         end
                     else
                         if not foundActive then
-                            lbl.Text = "→ " .. name .. " (locked)"
-                            lbl.TextColor3 = Color3.fromRGB(255, 200, 100)
+                            lbl.Text = "-> " .. name .. " (locked)"
+                            lbl.TextColor3 = ac(230, 180, 60)
                             foundActive = true
                         else
                             lbl.Text = "  " .. name
-                            lbl.TextColor3 = Color3.fromRGB(80, 80, 80)
+                            lbl.TextColor3 = ac(70, 70, 70)
                         end
                     end
                 end

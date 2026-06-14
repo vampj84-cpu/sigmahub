@@ -1,9 +1,3 @@
---[[
-    Sigma Hub v1.0 — Modular Entry Point
-    Loads all modules in dependency order for development.
-    For Roblox distribution, use build.lua instead.
-]]
-
 local Modules = {
     "modules/_banner",
     "modules/01-core",
